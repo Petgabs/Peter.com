@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SchoolCloud Builder — configure and generate pre-configured SchoolCloud standalone apps with your GitHub credentials and custom app name injected directly.">
+    <title>SchoolCloud Builder</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for Reactivity -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen" x-data="builderApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i data-lucide="hammer" class="w-5 h-5"></i>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight">SchoolCloud Builder
+                    <span class="text-xs font-normal text-slate-400 ml-1">for SchoolCloud v1.0 (Standalone)</span>
+                </h1>
+            </div>
+            <button type="button" @click="downloadOriginal()"
+                    class="hidden sm:inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">
+                <i data-lucide="file-down" class="w-4 h-4"></i>
+                Original file
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Steps banner -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-indigo-900 text-white p-8 rounded-2xl shadow-xl">
+            <div class="flex flex-col gap-3">
+                <div class="bg-indigo-700 w-10 h-10 rounded-lg flex items-center justify-center">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-indigo-100"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">1. Configure</h3>
+                <p class="text-indigo-100 text-sm leading-relaxed">Choose the app name and inject your GitHub Personal Access Token &amp; repository — no setup needed for your students.</p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="bg-indigo-700 w-10 h-10 rounded-lg flex items-center justify-center">
+                    <i data-lucide="hammer" class="w-5 h-5 text-indigo-100"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">2. Build</h3>
+                <p class="text-indigo-100 text-sm leading-relaxed">The builder injects everything directly into the SchoolCloud app and downloads a ready-to-share HTML file.</p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="bg-indigo-700 w-10 h-10 rounded-lg flex items-center justify-center">
+                    <i data-lucide="share-2" class="w-5 h-5 text-indigo-100"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">3. Distribute</h3>
+                <p class="text-indigo-100 text-sm leading-relaxed">Share the file via Classroom, email or GitHub Pages — it opens pre-configured and works offline.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+            <!-- Left column -->
+            <div class="lg:col-span-2 space-y-8">
+
+                <!-- Configuration card -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                    <h2 class="text-2xl font-bold mb-1">App configuration</h2>
+                    <p class="text-slate-500 text-sm mb-6">Everything you enter here is injected <span class="font-medium">directly into the generated SchoolCloud app</span>.</p>
+
+                    <div class="space-y-6">
+                        <!-- App name -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">App name</label>
+                            <input type="text" x-model="appName" placeholder="SchoolCloud" maxlength="40" autocomplete="off"
+                                   class="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                            <p class="text-[10px] text-slate-400 mt-1">Replaces &ldquo;SchoolCloud&rdquo; everywhere in the app — page title, header and the publish button. Leave as-is to keep the original name.</p>
+                        </div>
+
+                        <!-- Token -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">GitHub Personal Access Token</label>
+                            <div class="relative">
+                                <input :type="showToken ? 'text' : 'password'" x-model="token" placeholder="github_pat_… (fine-grained) or ghp_… (classic)"
+                                       autocomplete="off" spellcheck="false"
+                                       class="w-full px-4 py-2.5 pr-12 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                                <button type="button" @click="showToken = !showToken"
+                                        class="absolute inset-y-0 right-0 px-4 text-slate-400 hover:text-slate-600" :title="showToken ? 'Hide token' : 'Show token'">
+                                    <span x-show="!showToken"><i data-lucide="eye" class="w-5 h-5"></i></span>
+                                    <span x-show="showToken" x-cloak><i data-lucide="eye-off" class="w-5 h-5"></i></span>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Create one in GitHub &rarr; Settings &rarr; Developer settings &rarr; Personal access tokens. Give it <span class="font-medium">Contents: Read and write</span> on your apps repository.</p>
+                        </div>
+
+                        <!-- Repo -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Repository (Owner/Repo)</label>
+                            <input type="text" x-model="repo" placeholder="e.g., Petgabs/school-apps" autocomplete="off" spellcheck="false"
+                                   class="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                            <p class="text-[10px] text-slate-400 mt-1">The GitHub repository where published mini apps are stored. Pasting the full GitHub URL also works.</p>
+                            <p class="text-[10px] text-indigo-500 mt-1" x-show="repoHint" x-text="repoHint" x-cloak></p>
+                        </div>
+
+                        <!-- Test connection -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button type="button" @click="runTest()" :disabled="testing"
+                                    class="inline-flex items-center gap-2 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-50">
+                                <span x-show="!testing" class="inline-flex items-center gap-2"><i data-lucide="plug-zap" class="w-4 h-4"></i> Test connection</span>
+                                <span x-show="testing" x-cloak class="inline-flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    Testing…
+                                </span>
+                            </button>
+                            <span class="text-xs text-slate-400">Checks that the token can access the repository before you build.</span>
+                        </div>
+                        <div x-show="testResult" x-cloak x-transition
+                             class="text-sm rounded-lg p-3 flex items-start gap-2 border"
+                             :class="testResult && testResult.ok ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'">
+                            <span x-show="testResult && testResult.ok"><i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0"></i></span>
+                            <span x-show="testResult && !testResult.ok" x-cloak><i data-lucide="x-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i></span>
+                            <span x-text="testResult && testResult.msg"></span>
+                        </div>
+
+                        <!-- Lock toggle -->
+                        <label class="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-lg p-4 cursor-pointer select-none">
+                            <input type="checkbox" x-model="lock" class="mt-0.5 w-4 h-4 accent-indigo-600">
+                            <span class="text-sm">
+                                <span class="font-semibold text-slate-700">Lock injected settings (recommended)</span>
+                                <span class="block text-slate-500 text-xs mt-0.5 leading-relaxed">The injected token &amp; repository load on every start — even after &ldquo;Clear all local data&rdquo;. Turn off to only pre-fill them the first time, letting users set their own credentials later.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Advanced options -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                    <button type="button" @click="showAdvanced = !showAdvanced" class="w-full flex items-center justify-between text-left">
+                        <span class="flex items-center gap-2 font-bold">
+                            <i data-lucide="settings-2" class="w-5 h-5 text-slate-400"></i> Advanced options
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform" :class="showAdvanced ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="showAdvanced" x-cloak x-transition class="mt-6 space-y-4">
+                        <p class="text-sm text-slate-500">Current template: <span class="font-medium text-slate-700" x-text="templateLabel"></span></p>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium transition-colors">
+                                <i data-lucide="upload" class="w-4 h-4"></i> Use a custom SchoolCloud template
+                                <input type="file" accept=".html,.htm" class="hidden" @change="handleTemplateFile($event)">
+                            </label>
+                            <button type="button" x-show="customTemplate !== null" x-cloak @click="clearCustomTemplate()"
+                                    class="text-sm text-red-600 hover:bg-red-50 px-3 py-2 rounded-md transition-colors">Reset to built-in</button>
+                            <button type="button" @click="downloadOriginal()"
+                                    class="text-sm text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-md transition-colors">Download original SchoolCloud</button>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">For future SchoolCloud versions: upload the new standalone HTML here and the builder will inject into it. The build report tells you if any injection point was not found.</p>
+                    </div>
+                </div>
+
+                <!-- Security note -->
+                <div class="bg-amber-50 border border-amber-200 p-5 rounded-xl flex gap-3">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"></i>
+                    <div class="text-sm text-amber-800 space-y-2">
+                        <p class="font-semibold">Security note</p>
+                        <p class="leading-relaxed">The generated file stores the token in plain text — anyone holding the file can use its permissions. Prefer a <span class="font-medium">fine-grained</span> token limited to the one apps repository, and rotate it if you think it leaked.</p>
+                        <p class="leading-relaxed">For copies you hand to students, consider a <span class="font-medium">read-only</span> token (Contents: Read-only). Syncing and downloading still work — only publishing is blocked.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="space-y-6 lg:sticky lg:top-24">
+
+                <!-- Build panel -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-bold mb-4">Build</h2>
+
+                    <button type="button" @click="doBuild()"
+                            class="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100">
+                        <i data-lucide="hammer" class="w-5 h-5"></i> Build &amp; download app
+                    </button>
+                    <button type="button" @click="doPreview()"
+                            class="mt-2 w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-700 py-2.5 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                        <i data-lucide="external-link" class="w-4 h-4"></i> Preview in new tab
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-3 text-center">Runs entirely in your browser — nothing is uploaded anywhere.</p>
+
+                    <!-- Build report -->
+                    <div x-show="built" x-cloak x-transition class="mt-5 pt-4 border-t border-slate-100">
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Build report</p>
+                        <div class="space-y-2">
+                            <template x-for="(line, i) in (built ? built.report : [])" :key="i">
+                                <div class="flex items-start gap-2 text-sm">
+                                    <i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0" :class="line.ok ? 'text-emerald-500' : 'text-amber-500'"></i>
+                                    <span :class="line.ok ? 'text-slate-600' : 'text-amber-700'" x-text="line.text"></span>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="built && built.filename" class="mt-4 bg-slate-50 rounded-lg p-3 text-xs text-slate-500 flex items-center justify-between gap-2">
+                            <span class="flex items-center gap-2 min-w-0">
+                                <i data-lucide="file-code-2" class="w-4 h-4 flex-shrink-0"></i>
+                                <span class="truncate font-medium text-slate-700" x-text="built && built.filename"></span>
+                            </span>
+                            <span class="flex-shrink-0" x-text="sizeLabel()"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick guide -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-bold mb-3">Quick guide</h2>
+                    <ol class="list-decimal list-inside space-y-2 text-sm text-slate-600">
+                        <li class="leading-relaxed">Create a GitHub repository for the mini apps, e.g. <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">yourname/school-apps</code>.</li>
+                        <li class="leading-relaxed">Create a <span class="font-medium">fine-grained</span> Personal Access Token with <span class="font-medium">Contents: Read and write</span> on that repository only.</li>
+                        <li class="leading-relaxed">Fill in the form, click <span class="font-medium">Test connection</span>, then <span class="font-medium">Build &amp; download</span>.</li>
+                        <li class="leading-relaxed">Share the generated HTML file with your class — it opens fully configured.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center text-xs text-slate-400 py-8 px-4">
+        SchoolCloud Builder — runs entirely in your browser. The embedded template is the original SchoolCloud v1.0 (Standalone).
+    </footer>
+
+    <script>
+        /* ================================================================
+           SchoolCloud Builder — core build logic (pure functions)
+           ================================================================ */
+
+        var SCRIPT_OPEN = '<' + 'script>';
+        var SCRIPT_CLOSE = '<\/script>';
+
+        /* Original SchoolCloud v1.0 (Standalone) HTML, base64-encoded */
+        var TEMPLATE_B64 = 'PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CiAgICA8bWV0YSBjaGFyc2V0PSJVVEYtOCI+CiAgICA8bWV0YSBuYW1lPSJ2aWV3cG9ydCIgY29udGVudD0id2lkdGg9ZGV2aWNlLXdpZHRoLCBpbml0aWFsLXNjYWxlPTEuMCI+CiAgICA8dGl0bGU+U2Nob29sQ2xvdWQgU3RhbmRhbG9uZSAtIE9mZmxpbmUgTGlicmFyeTwvdGl0bGU+CiAgICA8IS0tIFRhaWx3aW5kIENTUyAtLT4KICAgIDxzY3JpcHQgc3JjPSJodHRwczovL2Nkbi50YWlsd2luZGNzcy5jb20iPjwvc2NyaXB0PgogICAgPCEtLSBBbHBpbmUuanMgZm9yIFJlYWN0aXZpdHkgLS0+CiAgICA8c2NyaXB0IGRlZmVyIHNyYz0iaHR0cHM6Ly91bnBrZy5jb20vYWxwaW5lanNAMy54LngvZGlzdC9jZG4ubWluLmpzIj48L3NjcmlwdD4KICAgIDwhLS0gTHVjaWRlIEljb25zIC0tPgogICAgPHNjcmlwdCBzcmM9Imh0dHBzOi8vdW5wa2cuY29tL2x1Y2lkZUBsYXRlc3QiPjwvc2NyaXB0PgogICAgPHN0eWxlPgogICAgICAgIFt4LWNsb2FrXSB7IGRpc3BsYXk6IG5vbmUgIWltcG9ydGFudDsgfQogICAgICAgIC5saW5lLWNsYW1wLTMgewogICAgICAgICAgICBkaXNwbGF5OiAtd2Via2l0LWJveDsKICAgICAgICAgICAgLXdlYmtpdC1saW5lLWNsYW1wOiAzOwogICAgICAgICAgICAtd2Via2l0LWJveC1vcmllbnQ6IHZlcnRpY2FsOyAgCiAgICAgICAgICAgIG92ZXJmbG93OiBoaWRkZW47CiAgICAgICAgfQogICAgPC9zdHlsZT4KPC9oZWFkPgo8Ym9keSBjbGFzcz0iYmctc2xhdGUtNTAgdGV4dC1zbGF0ZS05MDAgZm9udC1zYW5zIG1pbi1oLXNjcmVlbiIgeC1kYXRhPSJzY2hvb2xDbG91ZCgpIiB4LWluaXQ9ImluaXQoKSI+CgogICAgPCEtLSBIZWFkZXIgLS0+CiAgICA8aGVhZGVyIGNsYXNzPSJiZy13aGl0ZSBib3JkZXItYiBzdGlja3kgdG9wLTAgei0yMCI+CiAgICAgICAgPGRpdiBjbGFzcz0ibWF4LXctN3hsIG14LWF1dG8gcHgtNCBzbTpweC02IGxnOnB4LTggcHktNCBmbGV4IGp1c3RpZnktYmV0d2VlbiBpdGVtcy1jZW50ZXIiPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiBjdXJzb3ItcG9pbnRlciIgQGNsaWNrPSJjdXJyZW50VmlldyA9ICdsaWJyYXJ5JyI+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJiZy1pbmRpZ28tNjAwIHAtMiByb3VuZGVkLWxnIHRleHQtd2hpdGUiPgogICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJmaWxlLWNvZGUiPjwvaT4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPGgxIGNsYXNzPSJ0ZXh0LXhsIGZvbnQtYm9sZCB0cmFja2luZy10aWdodCI+U2Nob29sQ2xvdWQgPHNwYW4gY2xhc3M9InRleHQteHMgZm9udC1ub3JtYWwgdGV4dC1zbGF0ZS00MDAgbWwtMSI+djEuMCAoU3RhbmRhbG9uZSk8L3NwYW4+PC9oMT4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgIAogICAgICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtNCI+CiAgICAgICAgICAgICAgICA8YnV0dG9uIEBjbGljaz0iY3VycmVudFZpZXcgPSAndXBsb2FkJyIgCiAgICAgICAgICAgICAgICAgICAgICAgIHgtc2hvdz0iY3VycmVudFZpZXcgPT09ICdsaWJyYXJ5JyIKICAgICAgICAgICAgICAgICAgICAgICAgY2xhc3M9ImlubGluZS1mbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiBiZy1pbmRpZ28tNjAwIHRleHQtd2hpdGUgcHgtNCBweS0yIHJvdW5kZWQtbWQgaG92ZXI6YmctaW5kaWdvLTcwMCB0cmFuc2l0aW9uLWNvbG9ycyBzaGFkb3ctc20iPgogICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJwbHVzIiBjbGFzcz0idy00IGgtNCI+PC9pPgogICAgICAgICAgICAgICAgICAgIFRlYWNoZXIgVXBsb2FkCiAgICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgICAgIDxidXR0b24gQGNsaWNrPSJjdXJyZW50VmlldyA9ICdzZXR0aW5ncyciIAogICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0icC0yIHRleHQtc2xhdGUtNDAwIGhvdmVyOnRleHQtc2xhdGUtNjAwIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgICAgICAgICA8aSBkYXRhLWx1Y2lkZT0ic2V0dGluZ3MiIGNsYXNzPSJ3LTUgaC01Ij48L2k+CiAgICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICA8L2hlYWRlcj4KCiAgICA8IS0tIE1haW4gQ29udGVudCAtLT4KICAgIDxtYWluIGNsYXNzPSJtYXgtdy03eGwgbXgtYXV0byBweC00IHNtOnB4LTYgbGc6cHgtOCBweS04Ij4KICAgICAgICAKICAgICAgICA8IS0tIFdlbGNvbWUgU2VjdGlvbiAtLT4KICAgICAgICA8ZGl2IHgtc2hvdz0iY3VycmVudFZpZXcgPT09ICdsaWJyYXJ5JyIgeC10cmFuc2l0aW9uIAogICAgICAgICAgICAgY2xhc3M9Im1iLTEyIGdyaWQgZ3JpZC1jb2xzLTEgbWQ6Z3JpZC1jb2xzLTMgZ2FwLTYgYmctaW5kaWdvLTkwMCB0ZXh0LXdoaXRlIHAtOCByb3VuZGVkLTJ4bCBzaGFkb3cteGwiPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGZsZXgtY29sIGdhcC0zIj4KICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImJnLWluZGlnby03MDAgdy0xMCBoLTEwIHJvdW5kZWQtbGcgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIiPgogICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJ1cGxvYWQtY2xvdWQiIGNsYXNzPSJ3LTUgaC01IHRleHQtaW5kaWdvLTEwMCI+PC9pPgogICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICA8aDMgY2xhc3M9InRleHQtbGcgZm9udC1ib2xkIHRleHQtd2hpdGUiPjEuIFNoYXJlIEFwcHM8L2gzPgogICAgICAgICAgICAgICAgPHAgY2xhc3M9InRleHQtaW5kaWdvLTEwMCB0ZXh0LXNtIGxlYWRpbmctcmVsYXhlZCI+VGVhY2hlcnMgdXBsb2FkIG1pbmkgSFRNTCBhcHBzIGZvciBzaW11bGF0aW9ucyBvciBxdWl6emVzLjwvcD4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXggZmxleC1jb2wgZ2FwLTMiPgogICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iYmctaW5kaWdvLTcwMCB3LTEwIGgtMTAgcm91bmRlZC1sZyBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciI+CiAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9ImRhdGFiYXNlIiBjbGFzcz0idy01IGgtNSB0ZXh0LWluZGlnby0xMDAiPjwvaT4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPGgzIGNsYXNzPSJ0ZXh0LWxnIGZvbnQtYm9sZCB0ZXh0LXdoaXRlIj4yLiBTdG9yZSBMb2NhbGx5PC9oMz4KICAgICAgICAgICAgICAgIDxwIGNsYXNzPSJ0ZXh0LWluZGlnby0xMDAgdGV4dC1zbSBsZWFkaW5nLXJlbGF4ZWQiPkV2ZXJ5dGhpbmcgaXMgc2F2ZWQgaW4geW91ciBicm93c2VyIHN0b3JhZ2UgZm9yIGluc3RhbnQgYWNjZXNzLjwvcD4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXggZmxleC1jb2wgZ2FwLTMiPgogICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iYmctaW5kaWdvLTcwMCB3LTEwIGgtMTAgcm91bmRlZC1sZyBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciI+CiAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9ImRvd25sb2FkIiBjbGFzcz0idy01IGgtNSB0ZXh0LWluZGlnby0xMDAiPjwvaT4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPGgzIGNsYXNzPSJ0ZXh0LWxnIGZvbnQtYm9sZCB0ZXh0LXdoaXRlIj4zLiBPZmZsaW5lIFVzZTwvaDM+CiAgICAgICAgICAgICAgICA8cCBjbGFzcz0idGV4dC1pbmRpZ28tMTAwIHRleHQtc20gbGVhZGluZy1yZWxheGVkIj5TdHVkZW50cyBkb3dubG9hZCBhcHBzIHRvIHRoZWlyIGRldmljZSBhbmQgdXNlIHRoZW0gYW55d2hlcmUuPC9wPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgPCEtLSBMaWJyYXJ5IFZpZXcgLS0+CiAgICAgICAgPGRpdiB4LXNob3c9ImN1cnJlbnRWaWV3ID09PSAnbGlicmFyeSciIHgtdHJhbnNpdGlvbiB4LWNsb2FrPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJtYi04Ij4KICAgICAgICAgICAgICAgIDxoMiBjbGFzcz0idGV4dC0zeGwgZm9udC1ib2xkIHRleHQtc2xhdGUtOTAwIj5NaW5pIEFwcHMgTGlicmFyeTwvaDI+CiAgICAgICAgICAgICAgICA8cCBjbGFzcz0idGV4dC1zbGF0ZS02MDAgbXQtMiI+QnJvd3NlIHRoZSBjb2xsZWN0aW9uIG9mIGVkdWNhdGlvbmFsIHRvb2xzIGZvciB5b3VyIGNsYXNzcm9vbS48L3A+CiAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgPCEtLSBFbXB0eSBTdGF0ZSAtLT4KICAgICAgICAgICAgPHRlbXBsYXRlIHgtaWY9ImFwcHMubGVuZ3RoID09PSAwIj4KICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImJnLXdoaXRlIHJvdW5kZWQteGwgc2hhZG93LXNtIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIHAtMTYgdGV4dC1jZW50ZXIiPgogICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImJnLXNsYXRlLTEwMCB3LTIwIGgtMjAgcm91bmRlZC1mdWxsIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIG14LWF1dG8gbWItNiI+CiAgICAgICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJpbmJveCIgY2xhc3M9InctMTAgaC0xMCB0ZXh0LXNsYXRlLTQwMCI+PC9pPgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgICAgIDxoMyBjbGFzcz0idGV4dC14bCBmb250LXNlbWlib2xkIHRleHQtc2xhdGUtOTAwIj5ObyBhcHBzIGF2YWlsYWJsZTwvaDM+CiAgICAgICAgICAgICAgICAgICAgPHAgY2xhc3M9InRleHQtc2xhdGUtNTAwIG10LTIgbWF4LXcteHMgbXgtYXV0byI+Q2xpY2sgdGhlIHVwbG9hZCBidXR0b24gdG8gc3RhcnQgYnVpbGRpbmcgeW91ciBzY2hvb2wgbGlicmFyeS48L3A+CiAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgPC90ZW1wbGF0ZT4KCiAgICAgICAgICAgIDwhLS0gR3JpZCAtLT4KICAgICAgICAgICAgPGRpdiBjbGFzcz0iZ3JpZCBncmlkLWNvbHMtMSBtZDpncmlkLWNvbHMtMiBsZzpncmlkLWNvbHMtMyBnYXAtNiI+CiAgICAgICAgICAgICAgICA8dGVtcGxhdGUgeC1mb3I9ImFwcCBpbiBhcHBzIiA6a2V5PSJhcHAuaWQiPgogICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImJnLXdoaXRlIHJvdW5kZWQteGwgc2hhZG93LXNtIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIG92ZXJmbG93LWhpZGRlbiBob3ZlcjpzaGFkb3ctbWQgdHJhbnNpdGlvbi1zaGFkb3cgZ3JvdXAiPgogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJwLTYiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iZmxleCBqdXN0aWZ5LWJldHdlZW4gaXRlbXMtc3RhcnQgbWItNCI+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGgzIGNsYXNzPSJ0ZXh0LWxnIGZvbnQtYm9sZCB0ZXh0LXNsYXRlLTkwMCB0cnVuY2F0ZSBwci00IiB4LXRleHQ9ImFwcC5uYW1lIj48L2gzPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzPSJ0ZXh0LVsxMHB4XSBmb250LWJvbGQgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGVyIGJnLWluZGlnby01MCB0ZXh0LWluZGlnby03MDAgcHgtMiBweS0xIHJvdW5kZWQiPkhUTUw1PC9zcGFuPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cCBjbGFzcz0idGV4dC1zbGF0ZS02MDAgdGV4dC1zbSBsaW5lLWNsYW1wLTMgbWItNiBtaW4taC1bNC41cmVtXSIgeC10ZXh0PSJhcHAuZGVzY3JpcHRpb24gfHwgJ05vIGRlc2NyaXB0aW9uIHByb3ZpZGVkLiciPjwvcD4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgdGV4dC1zbGF0ZS00MDAgdGV4dC14cyBtYi02Ij4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8aSBkYXRhLWx1Y2lkZT0idXNlciIgY2xhc3M9InctMyBoLTMiPjwvaT4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiB4LXRleHQ9IidCeSAnICsgYXBwLnRlYWNoZXJOYW1lIj48L3NwYW4+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4gY2xhc3M9Im14LTEiPuKAojwvc3Bhbj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiB4LXRleHQ9ImZvcm1hdERhdGUoYXBwLmNyZWF0ZWRBdCkiPjwvc3Bhbj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXggZ2FwLTIiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gQGNsaWNrPSJkb3dubG9hZEFwcChhcHApIiAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNsYXNzPSJmbGV4LTEgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZ2FwLTIgYmctc2xhdGUtOTAwIHRleHQtd2hpdGUgcHktMi41IHJvdW5kZWQtbGcgaG92ZXI6Ymctc2xhdGUtODAwIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9ImRvd25sb2FkIiBjbGFzcz0idy00IGgtNCI+PC9pPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBEb3dubG9hZAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gQGNsaWNrPSJkZWxldGVBcHAoYXBwLmlkKSIgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0icC0yLjUgdGV4dC1zbGF0ZS0zMDAgaG92ZXI6dGV4dC1yZWQtNTAwIGhvdmVyOmJnLXJlZC01MCByb3VuZGVkLWxnIHRyYW5zaXRpb24tYWxsIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9InRyYXNoLTIiIGNsYXNzPSJ3LTQgaC00Ij48L2k+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICA8L3RlbXBsYXRlPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgPCEtLSBVcGxvYWQgVmlldyAtLT4KICAgICAgICA8ZGl2IHgtc2hvdz0iY3VycmVudFZpZXcgPT09ICd1cGxvYWQnIiB4LXRyYW5zaXRpb24geC1jbG9hayBjbGFzcz0ibWF4LXctMnhsIG14LWF1dG8iPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJiZy13aGl0ZSByb3VuZGVkLXhsIHNoYWRvdy1zbSBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCBwLTgiPgogICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIG1iLTgiPgogICAgICAgICAgICAgICAgICAgIDxidXR0b24gQGNsaWNrPSJjdXJyZW50VmlldyA9ICdsaWJyYXJ5JyIgY2xhc3M9InRleHQtc2xhdGUtNTAwIGhvdmVyOnRleHQtc2xhdGUtOTAwIGZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9ImFycm93LWxlZnQiIGNsYXNzPSJ3LTQgaC00Ij48L2k+CiAgICAgICAgICAgICAgICAgICAgICAgIEJhY2sgdG8gTGlicmFyeQogICAgICAgICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICAgICAgICAgIDxoMiBjbGFzcz0idGV4dC0yeGwgZm9udC1ib2xkIj5QdWJsaXNoIE1pbmkgQXBwPC9oMj4KICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgIDxmb3JtIEBzdWJtaXQucHJldmVudD0iaGFuZGxlVXBsb2FkIiBjbGFzcz0ic3BhY2UteS02Ij4KICAgICAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3M9ImJsb2NrIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS03MDAgbWItMSI+QXBwIE5hbWU8L2xhYmVsPgogICAgICAgICAgICAgICAgICAgICAgICA8aW5wdXQgdHlwZT0idGV4dCIgeC1tb2RlbD0ibmV3QXBwLm5hbWUiIHJlcXVpcmVkIHBsYWNlaG9sZGVyPSJlLmcuLCBQZXJpb2RpYyBUYWJsZSBFeHBsb3JlciIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNsYXNzPSJ3LWZ1bGwgcHgtNCBweS0yLjUgYm9yZGVyIGJvcmRlci1zbGF0ZS0yMDAgcm91bmRlZC1sZyBmb2N1czpyaW5nLTIgZm9jdXM6cmluZy1pbmRpZ28tNTAwIGZvY3VzOmJvcmRlci1pbmRpZ28tNTAwIG91dGxpbmUtbm9uZSB0cmFuc2l0aW9uLWFsbCI+CiAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICAgICAgICAgICAgPGxhYmVsIGNsYXNzPSJibG9jayB0ZXh0LXNtIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNzAwIG1iLTEiPlRlYWNoZXIgTmFtZTwvbGFiZWw+CiAgICAgICAgICAgICAgICAgICAgICAgIDxpbnB1dCB0eXBlPSJ0ZXh0IiB4LW1vZGVsPSJuZXdBcHAudGVhY2hlck5hbWUiIHJlcXVpcmVkIHBsYWNlaG9sZGVyPSJZb3VyIG5hbWUiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0idy1mdWxsIHB4LTQgcHktMi41IGJvcmRlciBib3JkZXItc2xhdGUtMjAwIHJvdW5kZWQtbGcgZm9jdXM6cmluZy0yIGZvY3VzOnJpbmctaW5kaWdvLTUwMCBmb2N1czpib3JkZXItaW5kaWdvLTUwMCBvdXRsaW5lLW5vbmUgdHJhbnNpdGlvbi1hbGwiPgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3M9ImJsb2NrIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS03MDAgbWItMSI+RGVzY3JpcHRpb248L2xhYmVsPgogICAgICAgICAgICAgICAgICAgICAgICA8dGV4dGFyZWEgeC1tb2RlbD0ibmV3QXBwLmRlc2NyaXB0aW9uIiByb3dzPSIzIiBwbGFjZWhvbGRlcj0iRXhwbGFpbiB3aGF0IHRoaXMgdG9vbCBkb2VzLi4uIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2xhc3M9InctZnVsbCBweC00IHB5LTIuNSBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCByb3VuZGVkLWxnIGZvY3VzOnJpbmctMiBmb2N1czpyaW5nLWluZGlnby01MDAgZm9jdXM6Ym9yZGVyLWluZGlnby01MDAgb3V0bGluZS1ub25lIHRyYW5zaXRpb24tYWxsIj48L3RleHRhcmVhPgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3M9ImJsb2NrIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS03MDAgbWItMSI+SFRNTCBGaWxlPC9sYWJlbD4KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0ibXQtMSByZWxhdGl2ZSBib3JkZXItMiBib3JkZXItc2xhdGUtMjAwIGJvcmRlci1kYXNoZWQgcm91bmRlZC14bCBwLTggdGV4dC1jZW50ZXIgaG92ZXI6Ym9yZGVyLWluZGlnby00MDAgdHJhbnNpdGlvbi1jb2xvcnMiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGlucHV0IHR5cGU9ImZpbGUiIEBjaGFuZ2U9ImhhbmRsZUZpbGVDaGFuZ2UiIGFjY2VwdD0iLmh0bWwiIHJlcXVpcmVkIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNsYXNzPSJhYnNvbHV0ZSBpbnNldC0wIHctZnVsbCBoLWZ1bGwgb3BhY2l0eS0wIGN1cnNvci1wb2ludGVyIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9InNwYWNlLXktMiI+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9ImZpbGUtdXAiIGNsYXNzPSJteC1hdXRvIGgtMTIgdy0xMiB0ZXh0LXNsYXRlLTMwMCI+PC9pPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9InRleHQtc20gdGV4dC1zbGF0ZS02MDAiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzcz0iZm9udC1zZW1pYm9sZCB0ZXh0LWluZGlnby02MDAiPkNsaWNrIHRvIHVwbG9hZDwvc3Bhbj4gb3IgZHJhZyBhbmQgZHJvcAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxwIGNsYXNzPSJ0ZXh0LXhzIHRleHQtc2xhdGUtNDAwIiB4LXRleHQ9ImZpbGVOYW1lID8gJ1NlbGVjdGVkOiAnICsgZmlsZU5hbWUgOiAnU3VwcG9ydCBvbmx5IC5odG1sIGZpbGVzJyI+PC9wPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIHR5cGU9InN1Ym1pdCIgOmRpc2FibGVkPSJ1cGxvYWRpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0idy1mdWxsIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIGdhcC0yIGJnLWluZGlnby02MDAgdGV4dC13aGl0ZSBweS0zLjUgcm91bmRlZC14bCBmb250LWJvbGQgaG92ZXI6YmctaW5kaWdvLTcwMCB0cmFuc2l0aW9uLWNvbG9ycyBkaXNhYmxlZDpvcGFjaXR5LTUwIHNoYWRvdy1sZyBzaGFkb3ctaW5kaWdvLTEwMCI+CiAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIHgtc2hvdz0iIXVwbG9hZGluZyIgY2xhc3M9ImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJjbG91ZC11cGxvYWQiIGNsYXNzPSJ3LTUgaC01Ij48L2k+IFB1Ymxpc2ggdG8gU2Nob29sQ2xvdWQKICAgICAgICAgICAgICAgICAgICAgICAgPC9zcGFuPgogICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiB4LXNob3c9InVwbG9hZGluZyIgY2xhc3M9ImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxzdmcgY2xhc3M9ImFuaW1hdGUtc3BpbiBoLTUgdy01IHRleHQtd2hpdGUiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjbGFzcz0ib3BhY2l0eS0yNSIgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSI0Ij48L2NpcmNsZT48cGF0aCBjbGFzcz0ib3BhY2l0eS03NSIgZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNCAxMmE4IDggMCAwMTgtOFYwQzUuMzczIDAgMCA1LjM3MyAwIDEyaDR6bTIgNS4yOTFBNy45NjIgNy45NjIgMCAwMTQgMTJIMGMwIDMuMDQyIDEuMTM1IDUuODI0IDMgNy45MzhsMy0yLjY0N3oiPjwvcGF0aD48L3N2Zz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIFByb2Nlc3NpbmcuLi4KICAgICAgICAgICAgICAgICAgICAgICAgPC9zcGFuPgogICAgICAgICAgICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgICAgICAgICAgPC9mb3JtPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KCiAgICAgICAgPCEtLSBTZXR0aW5ncyBWaWV3IC0tPgogICAgICAgIDxkaXYgeC1zaG93PSJjdXJyZW50VmlldyA9PT0gJ3NldHRpbmdzJyIgeC10cmFuc2l0aW9uIHgtY2xvYWsgY2xhc3M9Im1heC13LTJ4bCBteC1hdXRvIj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0iYmctd2hpdGUgcm91bmRlZC14bCBzaGFkb3ctc20gYm9yZGVyIGJvcmRlci1zbGF0ZS0yMDAgcC04Ij4KICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiBtYi04Ij4KICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIEBjbGljaz0iY3VycmVudFZpZXcgPSAnbGlicmFyeSciIGNsYXNzPSJ0ZXh0LXNsYXRlLTUwMCBob3Zlcjp0ZXh0LXNsYXRlLTkwMCBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiB0cmFuc2l0aW9uLWNvbG9ycyI+CiAgICAgICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJhcnJvdy1sZWZ0IiBjbGFzcz0idy00IGgtNCI+PC9pPiBCYWNrCiAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICAgPGgyIGNsYXNzPSJ0ZXh0LTJ4bCBmb250LWJvbGQiPkNsb3VkIFNldHRpbmdzPC9oMj4KICAgICAgICAgICAgICAgIDwvZGl2PgoKICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImJnLWJsdWUtNTAgYm9yZGVyIGJvcmRlci1ibHVlLTEwMCBwLTQgcm91bmRlZC1sZyBtYi04IGZsZXggZ2FwLTMiPgogICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJpbmZvIiBjbGFzcz0idy01IGgtNSB0ZXh0LWJsdWUtNTAwIGZsZXgtc2hyaW5rLTAiPjwvaT4KICAgICAgICAgICAgICAgICAgICA8cCBjbGFzcz0idGV4dC1zbSB0ZXh0LWJsdWUtNzAwIj5UaGlzIHN0YW5kYWxvbmUgdmVyc2lvbiBzdG9yZXMgZGF0YSBsb2NhbGx5IGluIHlvdXIgYnJvd3Nlci4gVG8gc3luYyB3aXRoIEdpdEh1YiwgZW50ZXIgeW91ciByZXBvc2l0b3J5IGRldGFpbHMgYmVsb3cuPC9wPgogICAgICAgICAgICAgICAgPC9kaXY+CgogICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0ic3BhY2UteS02Ij4KICAgICAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3M9ImJsb2NrIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS03MDAgbWItMSI+R2l0SHViIFBlcnNvbmFsIEFjY2VzcyBUb2tlbjwvbGFiZWw+CiAgICAgICAgICAgICAgICAgICAgICAgIDxpbnB1dCB0eXBlPSJwYXNzd29yZCIgeC1tb2RlbD0iZ2l0aHViQ29uZmlnLnRva2VuIiBwbGFjZWhvbGRlcj0iZ2hwX3h4eHh4eHh4eHh4eCIgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0idy1mdWxsIHB4LTQgcHktMiBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCByb3VuZGVkLWxnIGZvY3VzOnJpbmctMiBmb2N1czpyaW5nLWluZGlnby01MDAgb3V0bGluZS1ub25lIj4KICAgICAgICAgICAgICAgICAgICAgICAgPHAgY2xhc3M9InRleHQtWzEwcHhdIHRleHQtc2xhdGUtNDAwIG10LTEiPlJlcXVpcmVkIGZvciB1cGxvYWRpbmcgdG8gR2l0SHViLiBDcmVhdGUgb25lIGluIEdpdEh1YiBTZXR0aW5ncyA+IERldmVsb3BlciBTZXR0aW5ncy48L3A+CiAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICAgICAgICAgICAgPGxhYmVsIGNsYXNzPSJibG9jayB0ZXh0LXNtIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNzAwIG1iLTEiPlJlcG9zaXRvcnkgKE93bmVyL1JlcG8pPC9sYWJlbD4KICAgICAgICAgICAgICAgICAgICAgICAgPGlucHV0IHR5cGU9InRleHQiIHgtbW9kZWw9ImdpdGh1YkNvbmZpZy5yZXBvIiBwbGFjZWhvbGRlcj0iZS5nLiwgbXl1c2VybmFtZS9zY2hvb2wtYXBwcyIgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGFzcz0idy1mdWxsIHB4LTQgcHktMiBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCByb3VuZGVkLWxnIGZvY3VzOnJpbmctMiBmb2N1czpyaW5nLWluZGlnby01MDAgb3V0bGluZS1ub25lIj4KICAgICAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIEBjbGljaz0ic2F2ZVNldHRpbmdzKCkiIGNsYXNzPSJ3LWZ1bGwgYmctc2xhdGUtOTAwIHRleHQtd2hpdGUgcHktMiByb3VuZGVkLWxnIGZvbnQtYm9sZCBob3ZlcjpiZy1zbGF0ZS04MDAgdHJhbnNpdGlvbi1jb2xvcnMiPgogICAgICAgICAgICAgICAgICAgICAgICBTYXZlIENvbmZpZ3VyYXRpb24KICAgICAgICAgICAgICAgICAgICA8L2J1dHRvbj4KCiAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0icHQtNCBib3JkZXItdCBmbGV4IGZsZXgtY29sIGdhcC0yIj4KICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBAY2xpY2s9InN5bmNGcm9tR2l0aHViKCkiIGNsYXNzPSJ0ZXh0LWluZGlnby02MDAgdGV4dC1zbSBmb250LW1lZGl1bSBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiBob3ZlcjpiZy1pbmRpZ28tNTAgcC0yIHJvdW5kZWQtbGcgdHJhbnNpdGlvbi1jb2xvcnMiPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgPGkgZGF0YS1sdWNpZGU9InJlZnJlc2gtY3ciIGNsYXNzPSJ3LTQgaC00Ij48L2k+IFN5bmMgTGlicmFyeSBmcm9tIEdpdEh1YgogICAgICAgICAgICAgICAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBAY2xpY2s9ImNsZWFyRGF0YSgpIiBjbGFzcz0idGV4dC1yZWQtNjAwIHRleHQtc20gZm9udC1tZWRpdW0gZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgaG92ZXI6YmctcmVkLTUwIHAtMiByb3VuZGVkLWxnIHRyYW5zaXRpb24tY29sb3JzIj4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxpIGRhdGEtbHVjaWRlPSJ0cmFzaCIgY2xhc3M9InctNCBoLTQiPjwvaT4gQ2xlYXIgQWxsIExvY2FsIERhdGEKICAgICAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICA8L21haW4+CgogICAgPHNjcmlwdD4KICAgICAgICBmdW5jdGlvbiBzY2hvb2xDbG91ZCgpIHsKICAgICAgICAgICAgcmV0dXJuIHsKICAgICAgICAgICAgICAgIGN1cnJlbnRWaWV3OiAnbGlicmFyeScsCiAgICAgICAgICAgICAgICBhcHBzOiBbXSwKICAgICAgICAgICAgICAgIHVwbG9hZGluZzogZmFsc2UsCiAgICAgICAgICAgICAgICBmaWxlTmFtZTogJycsCiAgICAgICAgICAgICAgICBmaWxlQ29udGVudDogJycsCiAgICAgICAgICAgICAgICBnaXRodWJDb25maWc6IHsKICAgICAgICAgICAgICAgICAgICB0b2tlbjogJycsCiAgICAgICAgICAgICAgICAgICAgcmVwbzogJycKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICBuZXdBcHA6IHsKICAgICAgICAgICAgICAgICAgICBuYW1lOiAnJywKICAgICAgICAgICAgICAgICAgICB0ZWFjaGVyTmFtZTogJycsCiAgICAgICAgICAgICAgICAgICAgZGVzY3JpcHRpb246ICcnCiAgICAgICAgICAgICAgICB9LAoKICAgICAgICAgICAgICAgIGluaXQoKSB7CiAgICAgICAgICAgICAgICAgICAgY29uc3Qgc2F2ZWRBcHBzID0gbG9jYWxTdG9yYWdlLmdldEl0ZW0oJ3NjaG9vbGNsb3VkX2FwcHMnKTsKICAgICAgICAgICAgICAgICAgICBpZiAoc2F2ZWRBcHBzKSB0aGlzLmFwcHMgPSBKU09OLnBhcnNlKHNhdmVkQXBwcyk7CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgY29uc3Qgc2F2ZWRDb25maWcgPSBsb2NhbFN0b3JhZ2UuZ2V0SXRlbSgnc2Nob29sY2xvdWRfZ2l0aHViX2NvbmZpZycpOwogICAgICAgICAgICAgICAgICAgIGlmIChzYXZlZENvbmZpZykgdGhpcy5naXRodWJDb25maWcgPSBKU09OLnBhcnNlKHNhdmVkQ29uZmlnKTsKCiAgICAgICAgICAgICAgICAgICAgdGhpcy4kbmV4dFRpY2soKCkgPT4gbHVjaWRlLmNyZWF0ZUljb25zKCkpOwogICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgIHRoaXMuJHdhdGNoKCdjdXJyZW50VmlldycsICgpID0+IHsKICAgICAgICAgICAgICAgICAgICAgICAgc2V0VGltZW91dCgoKSA9PiBsdWNpZGUuY3JlYXRlSWNvbnMoKSwgNTApOwogICAgICAgICAgICAgICAgICAgIH0pOwogICAgICAgICAgICAgICAgfSwKCiAgICAgICAgICAgICAgICBzYXZlU2V0dGluZ3MoKSB7CiAgICAgICAgICAgICAgICAgICAgbG9jYWxTdG9yYWdlLnNldEl0ZW0oJ3NjaG9vbGNsb3VkX2dpdGh1Yl9jb25maWcnLCBKU09OLnN0cmluZ2lmeSh0aGlzLmdpdGh1YkNvbmZpZykpOwogICAgICAgICAgICAgICAgICAgIGFsZXJ0KCdTZXR0aW5ncyBzYXZlZCBsb2NhbGx5IScpOwogICAgICAgICAgICAgICAgfSwKCiAgICAgICAgICAgICAgICBhc3luYyBzeW5jRnJvbUdpdGh1YigpIHsKICAgICAgICAgICAgICAgICAgICBpZiAoIXRoaXMuZ2l0aHViQ29uZmlnLnRva2VuIHx8ICF0aGlzLmdpdGh1YkNvbmZpZy5yZXBvKSB7CiAgICAgICAgICAgICAgICAgICAgICAgIGFsZXJ0KCdQbGVhc2UgY29uZmlndXJlIEdpdEh1YiBzZXR0aW5ncyBmaXJzdCEnKTsKICAgICAgICAgICAgICAgICAgICAgICAgdGhpcy5jdXJyZW50VmlldyA9ICdzZXR0aW5ncyc7CiAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybjsKICAgICAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgICAgIHRyeSB7CiAgICAgICAgICAgICAgICAgICAgICAgIC8vIFdlIGZpcnN0IGNoZWNrIHRoZSByZXBvc2l0b3J5IHJvb3QgdG8gc2VlIGlmIHRoZSBhcHBzIGZvbGRlciBleGlzdHMKICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgcmVzID0gYXdhaXQgZmV0Y2goYGh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3MvJHt0aGlzLmdpdGh1YkNvbmZpZy5yZXBvfS9jb250ZW50cy9hcHBzYCwgewogICAgICAgICAgICAgICAgICAgICAgICAgICAgaGVhZGVyczogeyAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAnQXV0aG9yaXphdGlvbic6IGB0b2tlbiAke3RoaXMuZ2l0aHViQ29uZmlnLnRva2VufWAsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJ0FjY2VwdCc6ICdhcHBsaWNhdGlvbi92bmQuZ2l0aHViLnYzK2pzb24nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0pOwogICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgaWYgKHJlcy5zdGF0dXMgPT09IDQwNCkgewogICAgICAgICAgICAgICAgICAgICAgICAgICAgYWxlcnQoJ1RoZSAiYXBwcyIgZm9sZGVyIHdhcyBub3QgZm91bmQgaW4geW91ciByZXBvc2l0b3J5LiBZb3UgbmVlZCB0byB1cGxvYWQgYXQgbGVhc3Qgb25lIGFwcCBmaXJzdCEnKTsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybjsKICAgICAgICAgICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgICAgICAgICAgaWYgKCFyZXMub2spIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnN0IGVycm9yRGF0YSA9IGF3YWl0IHJlcy5qc29uKCk7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICB0aHJvdyBuZXcgRXJyb3IoZXJyb3JEYXRhLm1lc3NhZ2UgfHwgYEdpdEh1YiBlcnJvcjogJHtyZXMuc3RhdHVzfWApOwogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICBjb25zdCBmaWxlcyA9IGF3YWl0IHJlcy5qc29uKCk7CiAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICBpZiAoIUFycmF5LmlzQXJyYXkoZmlsZXMpKSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICB0aHJvdyBuZXcgRXJyb3IoJ0V4cGVjdGVkIGEgbGlzdCBvZiBmaWxlcyBidXQgcmVjZWl2ZWQgc29tZXRoaW5nIGVsc2UuJyk7CiAgICAgICAgICAgICAgICAgICAgICAgIH0KCiAgICAgICAgICAgICAgICAgICAgICAgIGNvbnN0IG5ld0FwcHMgPSBbXTsKICAgICAgICAgICAgICAgICAgICAgICAgZm9yIChjb25zdCBmaWxlIG9mIGZpbGVzKSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBpZiAoZmlsZS5uYW1lLmVuZHNXaXRoKCcuaHRtbCcpKSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbmV3QXBwcy5wdXNoKHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgaWQ6IGZpbGUuc2hhLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBuYW1lOiBmaWxlLm5hbWUuc3BsaXQoJy0nKS5zbGljZSgxKS5qb2luKCctJykucmVwbGFjZSgnLmh0bWwnLCAnJykgfHwgZmlsZS5uYW1lLnJlcGxhY2UoJy5odG1sJywgJycpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0ZWFjaGVyTmFtZTogJ0dpdEh1YiBDbG91ZCcsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uOiAnU3luY2VkIGZyb20gcmVwb3NpdG9yeScsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGZpbGVOYW1lOiBmaWxlLm5hbWUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGdpdGh1YlBhdGg6IGZpbGUucGF0aCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZG93bmxvYWRVcmw6IGZpbGUuZG93bmxvYWRfdXJsLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjcmVhdGVkQXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0pOwogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLmFwcHMgPSBuZXdBcHBzOwogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLnNhdmVBcHBzKCk7CiAgICAgICAgICAgICAgICAgICAgICAgIGFsZXJ0KGBTeW5jIGNvbXBsZXRlISBGb3VuZCAke25ld0FwcHMubGVuZ3RofSBhcHBzLmApOwogICAgICAgICAgICAgICAgICAgIH0gY2F0Y2ggKGVycikgewogICAgICAgICAgICAgICAgICAgICAgICBjb25zb2xlLmVycm9yKGVycik7CiAgICAgICAgICAgICAgICAgICAgICAgIGFsZXJ0KCdFcnJvciBzeW5jaW5nOiAnICsgZXJyLm1lc3NhZ2UgKyAnXG5cblBvc3NpYmxlIGNhdXNlczpcbjEuIEludmFsaWQgVG9rZW5cbjIuIEluY29ycmVjdCBSZXBvIG5hbWUgKHNob3VsZCBiZSB1c2VybmFtZS9yZXBvKVxuMy4gSW50ZXJuZXQgY29ubmVjdGlvbiBpc3N1ZScpOwogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCgogICAgICAgICAgICAgICAgaGFuZGxlRmlsZUNoYW5nZShlKSB7CiAgICAgICAgICAgICAgICAgICAgY29uc3QgZmlsZSA9IGUudGFyZ2V0LmZpbGVzWzBdOwogICAgICAgICAgICAgICAgICAgIGlmICghZmlsZSkgcmV0dXJuOwogICAgICAgICAgICAgICAgICAgIHRoaXMuZmlsZU5hbWUgPSBmaWxlLm5hbWU7CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgY29uc3QgcmVhZGVyID0gbmV3IEZpbGVSZWFkZXIoKTsKICAgICAgICAgICAgICAgICAgICByZWFkZXIub25sb2FkID0gKGV2ZW50KSA9PiB7CiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMuZmlsZUNvbnRlbnQgPSBldmVudC50YXJnZXQucmVzdWx0OwogICAgICAgICAgICAgICAgICAgIH07CiAgICAgICAgICAgICAgICAgICAgcmVhZGVyLnJlYWRBc1RleHQoZmlsZSk7CiAgICAgICAgICAgICAgICB9LAoKICAgICAgICAgICAgICAgIGFzeW5jIGhhbmRsZVVwbG9hZCgpIHsKICAgICAgICAgICAgICAgICAgICB0aGlzLnVwbG9hZGluZyA9IHRydWU7CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgdHJ5IHsKICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgcGF0aCA9IGBhcHBzLyR7RGF0ZS5ub3coKX0tJHt0aGlzLmZpbGVOYW1lfWA7CiAgICAgICAgICAgICAgICAgICAgICAgIGNvbnN0IGNvbnRlbnQgPSBidG9hKHVuZXNjYXBlKGVuY29kZVVSSUNvbXBvbmVudCh0aGlzLmZpbGVDb250ZW50KSkpOwogICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgbGV0IGdpdGh1YlN1Y2Nlc3MgPSBmYWxzZTsKICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgIGlmICh0aGlzLmdpdGh1YkNvbmZpZy50b2tlbiAmJiB0aGlzLmdpdGh1YkNvbmZpZy5yZXBvKSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBjb25zdCByZXMgPSBhd2FpdCBmZXRjaChgaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy8ke3RoaXMuZ2l0aHViQ29uZmlnLnJlcG99L2NvbnRlbnRzLyR7cGF0aH1gLCB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWV0aG9kOiAnUFVUJywKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBoZWFkZXJzOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICdBdXRob3JpemF0aW9uJzogYHRva2VuICR7dGhpcy5naXRodWJDb25maWcudG9rZW59YCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJ0NvbnRlbnQtVHlwZSc6ICdhcHBsaWNhdGlvbi9qc29uJywKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk6IEpTT04uc3RyaW5naWZ5KHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWVzc2FnZTogYFVwbG9hZCAke3RoaXMubmV3QXBwLm5hbWV9IGJ5ICR7dGhpcy5uZXdBcHAudGVhY2hlck5hbWV9YCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY29udGVudDogY29udGVudAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0pCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9KTsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgaWYgKHJlcy5vaykgewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGdpdGh1YlN1Y2Nlc3MgPSB0cnVlOwogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjb25zdCBlcnJvckRhdGEgPSBhd2FpdCByZXMuanNvbigpOwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnNvbGUuZXJyb3IoJ0dpdEh1YiBVcGxvYWQgRXJyb3I6JywgZXJyb3JEYXRhKTsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0aHJvdyBuZXcgRXJyb3IoYEdpdEh1YiBVcGxvYWQgRmFpbGVkOiAke2Vycm9yRGF0YS5tZXNzYWdlfWApOwogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgICAgICAgICBjb25zdCBhcHAgPSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICBpZDogRGF0ZS5ub3coKS50b1N0cmluZygpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgbmFtZTogdGhpcy5uZXdBcHAubmFtZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRlYWNoZXJOYW1lOiB0aGlzLm5ld0FwcC50ZWFjaGVyTmFtZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGRlc2NyaXB0aW9uOiB0aGlzLm5ld0FwcC5kZXNjcmlwdGlvbiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGZpbGVOYW1lOiB0aGlzLmZpbGVOYW1lIHx8ICdhcHAuaHRtbCcsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBjb250ZW50OiB0aGlzLmZpbGVDb250ZW50LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgZ2l0aHViUGF0aDogZ2l0aHViU3VjY2VzcyA/IHBhdGggOiBudWxsLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgY3JlYXRlZEF0OiBuZXcgRGF0ZSgpLnRvSVNPU3RyaW5nKCkKICAgICAgICAgICAgICAgICAgICAgICAgfTsKCiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMuYXBwcy51bnNoaWZ0KGFwcCk7CiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMuc2F2ZUFwcHMoKTsKICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMubmV3QXBwID0geyBuYW1lOiAnJywgdGVhY2hlck5hbWU6ICcnLCBkZXNjcmlwdGlvbjogJycgfTsKICAgICAgICAgICAgICAgICAgICAgICAgdGhpcy5maWxlTmFtZSA9ICcnOwogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLmZpbGVDb250ZW50ID0gJyc7CiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMudXBsb2FkaW5nID0gZmFsc2U7CiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMuY3VycmVudFZpZXcgPSAnbGlicmFyeSc7CiAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICBhbGVydChnaXRodWJTdWNjZXNzID8gJ0FwcCBwdWJsaXNoZWQgdG8gR2l0SHViIGFuZCBsb2NhbCBsaWJyYXJ5IScgOiAnQXBwIHNhdmVkIHRvIGxvY2FsIGxpYnJhcnkgKEdpdEh1YiBjb25maWcgbWlzc2luZy9mYWlsZWQpLicpOwogICAgICAgICAgICAgICAgICAgIH0gY2F0Y2ggKGVycikgewogICAgICAgICAgICAgICAgICAgICAgICBhbGVydCgnVXBsb2FkIGZhaWxlZDogJyArIGVyci5tZXNzYWdlKTsKICAgICAgICAgICAgICAgICAgICAgICAgdGhpcy51cGxvYWRpbmcgPSBmYWxzZTsKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAoKICAgICAgICAgICAgICAgIHNhdmVBcHBzKCkgewogICAgICAgICAgICAgICAgICAgIGxvY2FsU3RvcmFnZS5zZXRJdGVtKCdzY2hvb2xjbG91ZF9hcHBzJywgSlNPTi5zdHJpbmdpZnkodGhpcy5hcHBzKSk7CiAgICAgICAgICAgICAgICB9LAoKICAgICAgICAgICAgICAgIGFzeW5jIGRvd25sb2FkQXBwKGFwcCkgewogICAgICAgICAgICAgICAgICAgIGxldCBjb250ZW50ID0gYXBwLmNvbnRlbnQ7CiAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgLy8gSWYgY29udGVudCBpcyBub3QgbG9jYWwsIGZldGNoIGZyb20gR2l0SHViCiAgICAgICAgICAgICAgICAgICAgaWYgKCFjb250ZW50ICYmIGFwcC5kb3dubG9hZFVybCkgewogICAgICAgICAgICAgICAgICAgICAgICB0cnkgewogICAgICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgcmVzID0gYXdhaXQgZmV0Y2goYXBwLmRvd25sb2FkVXJsKTsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnRlbnQgPSBhd2FpdCByZXMudGV4dCgpOwogICAgICAgICAgICAgICAgICAgICAgICB9IGNhdGNoIChlcnIpIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGFsZXJ0KCdGYWlsZWQgdG8gZG93bmxvYWQgZnJvbSBHaXRIdWI6ICcgKyBlcnIubWVzc2FnZSk7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICByZXR1cm47CiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgICAgIGNvbnN0IGJsb2IgPSBuZXcgQmxvYihbY29udGVudF0sIHsgdHlwZTogJ3RleHQvaHRtbCcgfSk7CiAgICAgICAgICAgICAgICAgICAgY29uc3QgdXJsID0gVVJMLmNyZWF0ZU9iamVjdFVSTChibG9iKTsKICAgICAgICAgICAgICAgICAgICBjb25zdCBhID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnYScpOwogICAgICAgICAgICAgICAgICAgIGEuaHJlZiA9IHVybDsKICAgICAgICAgICAgICAgICAgICBhLmRvd25sb2FkID0gYXBwLmZpbGVOYW1lOwogICAgICAgICAgICAgICAgICAgIGRvY3VtZW50LmJvZHkuYXBwZW5kQ2hpbGQoYSk7CiAgICAgICAgICAgICAgICAgICAgYS5jbGljaygpOwogICAgICAgICAgICAgICAgICAgIGRvY3VtZW50LmJvZHkucmVtb3ZlQ2hpbGQoYSk7CiAgICAgICAgICAgICAgICAgICAgVVJMLnJldm9rZU9iamVjdFVSTCh1cmwpOwogICAgICAgICAgICAgICAgfSwKCiAgICAgICAgICAgICAgICBkZWxldGVBcHAoaWQpIHsKICAgICAgICAgICAgICAgICAgICBpZiAoY29uZmlybSgnQXJlIHlvdSBzdXJlIHlvdSB3YW50IHRvIGRlbGV0ZSB0aGlzIGFwcD8nKSkgewogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLmFwcHMgPSB0aGlzLmFwcHMuZmlsdGVyKGEgPT4gYS5pZCAhPT0gaWQpOwogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLnNhdmVBcHBzKCk7CiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKCiAgICAgICAgICAgICAgICBjbGVhckRhdGEoKSB7CiAgICAgICAgICAgICAgICAgICAgaWYgKGNvbmZpcm0oJ1dpcGUgZXZlcnl0aGluZz8gVGhpcyBjYW5ub3QgYmUgdW5kb25lLicpKSB7CiAgICAgICAgICAgICAgICAgICAgICAgIGxvY2FsU3RvcmFnZS5yZW1vdmVJdGVtKCdzY2hvb2xjbG91ZF9hcHBzJyk7CiAgICAgICAgICAgICAgICAgICAgICAgIHRoaXMuYXBwcyA9IFtdOwogICAgICAgICAgICAgICAgICAgICAgICB0aGlzLmN1cnJlbnRWaWV3ID0gJ2xpYnJhcnknOwogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCgogICAgICAgICAgICAgICAgZm9ybWF0RGF0ZShpc29TdHJpbmcpIHsKICAgICAgICAgICAgICAgICAgICBjb25zdCBkYXRlID0gbmV3IERhdGUoaXNvU3RyaW5nKTsKICAgICAgICAgICAgICAgICAgICByZXR1cm4gZGF0ZS50b0xvY2FsZURhdGVTdHJpbmcodW5kZWZpbmVkLCB7IAogICAgICAgICAgICAgICAgICAgICAgICBtb250aDogJ3Nob3J0JywgCiAgICAgICAgICAgICAgICAgICAgICAgIGRheTogJ251bWVyaWMnLAogICAgICAgICAgICAgICAgICAgICAgICB5ZWFyOiAnbnVtZXJpYycKICAgICAgICAgICAgICAgICAgICB9KTsKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgIH0KICAgIDwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4K';
+
+        function decodeTemplate() {
+            var bin = atob(TEMPLATE_B64);
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new TextDecoder('utf-8').decode(bytes);
+        }
+
+        function jsEscape(s) {
+            return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]+/g, ' ');
+        }
+
+        function htmlEscape(s) {
+            return String(s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function normalizeRepo(input) {
+            var r = String(input || '').trim();
+            r = r.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '');
+            r = r.replace(/\.git$/i, '');
+            r = r.replace(/\s+/g, '');
+            r = r.replace(/^\/+|\/+$/g, '');
+            return r;
+        }
+
+        function slugify(s) {
+            var base = String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+            var slug = base.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            return slug || 'schoolcloud';
+        }
+
+        /**
+         * Builds a customized SchoolCloud app from a template.
+         * opts: { appName, token, repo, lock }
+         * Returns { error, html, filename, report: [{ok, text}] }
+         */
+        function buildCustomApp(template, opts) {
+            opts = opts || {};
+            var rawName = String(opts.appName || '').trim();
+            var token = String(opts.token || '').trim();
+            var repo = normalizeRepo(opts.repo);
+            var lock = !!opts.lock;
+            var report = [];
+
+            if (!template || !/<html[\s>]/i.test(template)) {
+                return { error: true, html: '', filename: '', report: [
+                    { ok: false, text: 'The template is missing or is not a valid HTML file.' }
+                ] };
+            }
+
+            var src = template;
+            var name = rawName || 'SchoolCloud';
+            var safeName = htmlEscape(name.replace(/[\u0000-\u001f]+/g, ' '));
+
+            /* --- 1. App name (branding) --- */
+            if (name !== 'SchoolCloud') {
+                var count = src.split('SchoolCloud').length - 1;
+                src = src.split('SchoolCloud').join(safeName);
+                report.push(count > 0
+                    ? { ok: true, text: 'App renamed to \u201C' + name + '\u201D \u2014 ' + count + ' place' + (count === 1 ? '' : 's') + ' updated (page title, header, publish button).' }
+                    : { ok: false, text: '\u201CSchoolCloud\u201D was not found in this template \u2014 the name was not changed. Is this really a SchoolCloud file?' });
+            } else {
+                report.push({ ok: true, text: 'App name kept as \u201CSchoolCloud\u201D.' });
+            }
+
+            /* --- 2. GitHub credentials --- */
+            if (token || repo) {
+
+                if ((token ? 1 : 0) + (repo ? 1 : 0) === 1) {
+                    report.push({ ok: false, text: 'Only ' + (token ? 'a token' : 'a repository') + ' was provided \u2014 both are needed for syncing &amp; publishing. Users would still have to enter the missing one in Settings.' });
+                }
+                if (repo && !/^[^\/\s]+\/[^\/\s]+$/.test(repo)) {
+                    report.push({ ok: false, text: 'The repository \u201C' + repo + '\u201D does not look like owner/repo \u2014 it was injected anyway, but please double-check it.' });
+                }
+
+                /* 2a. Pre-fill the githubConfig defaults */
+                if (token && /\btoken:\s*''/.test(src)) {
+                    src = src.replace(/\btoken:\s*''/, function () { return "token: '" + jsEscape(token) + "'"; });
+                    report.push({ ok: true, text: 'GitHub Personal Access Token injected into the app settings.' });
+                } else if (token) {
+                    report.push({ ok: false, text: 'Token placeholder not found in the template \u2014 the token could not be pre-filled.' });
+                }
+                if (repo && /\brepo:\s*''/.test(src)) {
+                    src = src.replace(/\brepo:\s*''/, function () { return "repo: '" + jsEscape(repo) + "'"; });
+                    report.push({ ok: true, text: 'Repository \u201C' + repo + '\u201D injected into the app settings.' });
+                } else if (repo) {
+                    report.push({ ok: false, text: 'Repository placeholder not found in the template \u2014 the repository could not be pre-filled.' });
+                }
+
+                /* 2b. Runtime config object (read by the patched init) */
+                var cfg = SCRIPT_OPEN + '\n' +
+                    '        /* Injected by SchoolCloud Builder \u2014 pre-configured GitHub settings */\n' +
+                    '        window.__SCHOOLCLOUD_BUILDER__ = {\n' +
+                    '            token: ' + (token ? "'" + jsEscape(token) + "'" : "''") + ',\n' +
+                    '            repo: ' + (repo ? "'" + jsEscape(repo) + "'" : "''") + ',\n' +
+                    '            lock: ' + (lock ? 'true' : 'false') + '\n' +
+                    '        };\n' +
+                    '    ' + SCRIPT_CLOSE + '\n';
+                if (/<\/head>/i.test(src)) {
+                    src = src.replace(/<\/head>/i, function (m) { return cfg + m; });
+                } else if (/<body[^>]*>/i.test(src)) {
+                    src = src.replace(/<body[^>]*>/i, function (m) { return cfg + m; });
+                }
+
+                /* 2c. Patch init() so the injected settings are applied on startup */
+                var anchor = /const savedConfig = localStorage\.getItem\('schoolcloud_github_config'\);\s*if \(savedConfig\) this\.githubConfig = JSON\.parse\(savedConfig\);/;
+                var patch =
+                    '\n\n' +
+                    '                    /* --- Injected by SchoolCloud Builder: apply pre-configured GitHub settings --- */\n' +
+                    '                    var __builderConfig = window.__SCHOOLCLOUD_BUILDER__;\n' +
+                    '                    if (__builderConfig && (__builderConfig.lock || !savedConfig) && (__builderConfig.token || __builderConfig.repo)) {\n' +
+                    '                        if (__builderConfig.token) this.githubConfig.token = __builderConfig.token;\n' +
+                    '                        if (__builderConfig.repo) this.githubConfig.repo = __builderConfig.repo;\n' +
+                    "                        localStorage.setItem('schoolcloud_github_config', JSON.stringify(this.githubConfig));\n" +
+                    '                    }';
+                if (anchor.test(src)) {
+                    src = src.replace(anchor, function (m) { return m + patch; });
+                    report.push({ ok: true, text: lock
+                        ? 'Settings locked: the injected credentials load on every start (recommended for sharing).'
+                        : 'Credentials set as defaults: they pre-fill on first run; users can still change them in Settings.' });
+                } else {
+                    report.push({ ok: false, text: 'Could not patch the app startup routine \u2014 credentials are still pre-filled, but a previously saved configuration may override them.' });
+                }
+
+            } else {
+                report.push({ ok: true, text: 'No GitHub credentials provided \u2014 the app will ask for them in Settings (like the original).' });
+            }
+
+            return {
+                error: false,
+                html: src,
+                filename: slugify(name) + '.html',
+                report: report
+            };
+        }
+
+        /* ================================================================
+           UI component (Alpine.js)
+           ================================================================ */
+
+        function builderApp() {
+            return {
+                appName: 'SchoolCloud',
+                token: '',
+                repo: '',
+                lock: true,
+                showToken: false,
+                showAdvanced: false,
+                testing: false,
+                testResult: null,
+                built: null,
+                customTemplate: null,
+                customTemplateName: '',
+
+                init() {
+                    lucide.createIcons();
+                },
+
+                get template() {
+                    return this.customTemplate !== null ? this.customTemplate : decodeTemplate();
+                },
+                get templateLabel() {
+                    return this.customTemplate !== null
+                        ? ('Custom template: ' + (this.customTemplateName || 'pasted HTML'))
+                        : 'SchoolCloud v1.0 (Standalone) \u2014 built-in';
+                },
+                get repoHint() {
+                    var r = String(this.repo || '').trim();
+                    if (!r) return '';
+                    var n = normalizeRepo(r);
+                    return (n && n !== r) ? ('Will be injected as: ' + n) : '';
+                },
+
+                async runTest() {
+                    if (this.testing) return;
+                    var self = this;
+                    this.testing = true;
+                    this.testResult = null;
+                    try {
+                        var token = this.token.trim();
+                        var repo = normalizeRepo(this.repo);
+                        if (!token) throw new Error('Enter your GitHub Personal Access Token first.');
+                        if (!repo || repo.indexOf('/') === -1) throw new Error('Enter the repository as owner/repo (e.g. Petgabs/school-apps) \u2014 or paste its GitHub URL.');
+                        var headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' };
+
+                        var res = await fetch('https://api.github.com/repos/' + repo, { headers: headers });
+                        if (res.status === 401) throw new Error('Token rejected (401). Check that you copied the full token and that it has not expired.');
+                        if (res.status === 404) throw new Error('Repository not found (404). Check the owner/repo spelling \u2014 or the token has no access to it.');
+                        if (!res.ok) throw new Error('GitHub returned HTTP ' + res.status + '.');
+
+                        var data = await res.json();
+                        var msg = 'Connected to ' + data.full_name + ' (' + (data.private ? 'private' : 'public') + ').';
+
+                        var appsRes = await fetch('https://api.github.com/repos/' + repo + '/contents/apps', { headers: headers });
+                        if (appsRes.ok) msg += ' The \u201Capps\u201D folder exists \u2014 syncing will work right away.';
+                        else if (appsRes.status === 404) msg += ' No \u201Capps\u201D folder yet \u2014 it is created when the first mini app is published.';
+                        else msg += ' Could not check the \u201Capps\u201D folder (HTTP ' + appsRes.status + ').';
+
+                        this.testResult = { ok: true, msg: msg };
+                    } catch (err) {
+                        this.testResult = { ok: false, msg: err.message };
+                    } finally {
+                        this.testing = false;
+                        setTimeout(function () { lucide.createIcons(); }, 30);
+                    }
+                },
+
+                doBuild() {
+                    var result = buildCustomApp(this.template, {
+                        appName: this.appName, token: this.token, repo: this.repo, lock: this.lock
+                    });
+                    result.report.unshift({ ok: true, text: 'Template: ' + this.templateLabel });
+                    this.built = result;
+                    setTimeout(function () { lucide.createIcons(); }, 50);
+                    if (!result.error) this.triggerDownload(result);
+                },
+
+                doPreview() {
+                    var result = (this.built && !this.built.error)
+                        ? this.built
+                        : buildCustomApp(this.template, { appName: this.appName, token: this.token, repo: this.repo, lock: this.lock });
+                    if (!this.built || this.built.error) result.report.unshift({ ok: true, text: 'Template: ' + this.templateLabel });
+                    this.built = result;
+                    setTimeout(function () { lucide.createIcons(); }, 50);
+                    var blob = new Blob([result.html], { type: 'text/html' });
+                    var url = URL.createObjectURL(blob);
+                    window.open(url, '_blank');
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+                },
+
+                triggerDownload(result) {
+                    var blob = new Blob([result.html], { type: 'text/html' });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = result.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+                },
+
+                downloadOriginal() {
+                    this.triggerDownload({ html: decodeTemplate(), filename: 'schoolcloud-standalone.html' });
+                },
+
+                handleTemplateFile(e) {
+                    var file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    var self = this;
+                    var reader = new FileReader();
+                    reader.onload = function (ev) {
+                        self.customTemplate = String(ev.target.result || '');
+                        self.customTemplateName = file.name;
+                        self.built = null;
+                        self.testResult = null;
+                        setTimeout(function () { lucide.createIcons(); }, 30);
+                    };
+                    reader.readAsText(file);
+                },
+
+                clearCustomTemplate() {
+                    this.customTemplate = null;
+                    this.customTemplateName = '';
+                    this.built = null;
+                },
+
+                sizeLabel() {
+                    if (!this.built || !this.built.html) return '';
+                    var bytes = new Blob([this.built.html]).size;
+                    return bytes < 1024 ? (bytes + ' B') : ((bytes / 1024).toFixed(1) + ' KB');
+                }
+            };
+        }
+    </script>
+</body>
+</html>
